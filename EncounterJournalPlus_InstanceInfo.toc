@@ -1,0 +1,9 @@
+## Interface: 70300
+## Title: EncounterJournal Plus - Instances Info
+## Version: 7.0.3
+## Notes: Adds saved instances info to EncounterJournal
+## Author: PeckZeg
+
+EncounterJournalPlus_InstanceInfo.lua
+
+EncounterJournalPlus_InstanceInfo.xml
