@@ -4,6 +4,10 @@
 ## Notes: Adds saved instances info to EncounterJournal
 ## Author: PeckZeg
 
+locales/enUS.lua
+locales/zhCN.lua
+locales/zhTW.lua
+
 EncounterJournalPlus_InstanceInfo.lua
 
 EncounterJournalPlus_InstanceInfo.xml
