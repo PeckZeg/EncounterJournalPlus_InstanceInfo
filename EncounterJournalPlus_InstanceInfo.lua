@@ -26,6 +26,7 @@ local function GetSavedInstances()
 
     if locked or extended then
       table.insert(instances[name], {
+        ["index"] = i,
         ["name"] = name,
         ["difficulty"] = difficulty,
         ["locked"] = locked,
@@ -40,6 +41,28 @@ local function GetSavedInstances()
       table.sort(instances[name], function(a, b)
         return a.difficulty < b.difficulty;
       end);
+    end
+  end
+
+  return db;
+end
+
+local function GetSavedInstancesByDifficulty()
+  local db = {};
+
+  for i = 1, GetNumSavedInstances() do
+    local name, id, _, difficulty, locked, extended = GetSavedInstanceInfo(i);
+
+    if locked or extended then
+      if db[name] == nil then
+        db[name] = {};
+      end
+
+      db[name][difficulty] = {
+        ["index"] = i,
+        ["locked"] = locked,
+        ["extended"] = extended,
+      };
     end
   end
 
@@ -66,6 +89,35 @@ local function GetEncounterJournalInstanceTabs()
   end
 
   return nil, nil;
+end
+
+local function GetEncounterJournalEncounterBossButtonKilledTexture(button)
+  if button.killedTexture == nil then
+    button.killedTexture = button:CreateTexture(nil, "OVERLAY");
+    button.killedTexture:SetTexture("Interface\\EncounterJournal\\UI-EJ-HeroicTextIcon");
+    button.killedTexture:SetPoint("RIGHT", -14, 0);
+    button.killedTexture:SetAlpha(0.66);
+  end
+
+  button.killedTexture:Hide();
+
+  return button.killedTexture;
+end
+
+local function GetSavedInstanceBossEncounterInfo(instanceIndex)
+  local info = {};
+
+  for i = 1, 32 do
+    local bossName, _, isKilled, _ = GetSavedInstanceEncounterInfo(instanceIndex, i);
+
+    if bossName ~= nil then
+      info[bossName] = isKilled;
+    else
+      break;
+    end
+  end
+
+  return info;
 end
 
 local function HandleEncounterJournalScrollInstances(func)
@@ -110,6 +162,20 @@ local function ResetEncounterJournalScrollInstancesInfo()
     encounterProgressText:SetFont(font, 12);
     encounterProgressText:Hide();
   end);
+end
+
+local function ResetEncounterJournalBossButtonKilledTexture()
+  for i = 1, 32 do
+    local button = _G["EncounterJournalBossButton" .. i];
+
+    if button == nil then
+      break;
+    end
+
+    if button.killedTexture ~= nil then
+      button.killedTexture:Hide();
+    end
+  end
 end
 
 local function RenderSavedInstancesOverview(savedDB)
@@ -161,6 +227,36 @@ local function RenderInstanceInfo(instanceButton, savedInstance)
   encounterProgressButton:Show();
 end
 
+local function RenderEncounterJournalEncounterBossInfo(index)
+  local info = GetSavedInstanceBossEncounterInfo(index);
+
+  for i = 1, 32 do
+    local button = _G["EncounterJournalBossButton" .. i];
+
+    if button == nil then
+      break;
+    end
+
+    local texture = GetEncounterJournalEncounterBossButtonKilledTexture(button);
+
+    if info[button:GetText()] then
+      texture:Show();
+    end
+  end
+end
+
+local function RenderEncounterJournalEncounter(difficulty, name)
+  local db = GetSavedInstancesByDifficulty();
+
+  if db[name] ~= nil and db[name][difficulty] ~= nil then
+    local info = db[name][difficulty];
+
+    if info.locked or info.extended then
+      RenderEncounterJournalEncounterBossInfo(info.index);
+    end
+  end
+end
+
 local function RenderEncounterJournalInstances()
   local savedDB = GetSavedInstances();
   local dungeonsTab, raidsTab = GetEncounterJournalInstanceTabs();
@@ -194,6 +290,16 @@ local function EncounterJournalTierDropdown_OnSelect()
   end);
 end
 
+local function EncounterJournalEncounter_OnHook()
+  hooksecurefunc("EncounterJournal_DisplayInstance", function()
+    local difficulty = EJ_GetDifficulty();
+    local name = EJ_GetInstanceInfo(EncounterJournal.instanceID);
+
+    ResetEncounterJournalBossButtonKilledTexture();
+    RenderEncounterJournalEncounter(difficulty, name);
+  end)
+end
+
 function EncounterJournalPlus_InstanceInfo_OnLoad(self)
   self:RegisterEvent("ADDON_LOADED");
   self:RegisterEvent("UPDATE_INSTANCE_INFO");
@@ -210,6 +316,7 @@ function EncounterJournalPlus_InstanceInfo_OnEvent(self, event, arg1)
       end
     end);
 
+    EncounterJournalEncounter_OnHook();
     EncounterJournalTierDropdown_OnSelect();
     EncounterJournalInstanceTab_OnClick();
   elseif event == "UPDATE_INSTANCE_INFO" then
